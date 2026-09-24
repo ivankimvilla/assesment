@@ -6,6 +6,7 @@ use App\Models\Document;
 use App\Models\DocumentShare;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -13,12 +14,7 @@ class WorkspaceController extends Controller
 {
     private function currentUser(Request $request): User
     {
-        $user = User::find($request->session()->get('user_id'));
-        if (! $user) {
-            $user = User::firstOrCreate(['email' => 'alex@example.com'], ['name' => 'Alex Morgan', 'password' => 'password']);
-            $request->session()->put('user_id', $user->id);
-        }
-        return $user;
+        return Auth::user();
     }
 
     public function index(Request $request)
@@ -31,7 +27,6 @@ class WorkspaceController extends Controller
 
         return view('workspace', [
             'user' => $user,
-            'users' => User::whereKeyNot($user->id)->orderBy('name')->get(),
             'documents' => $documents,
             'activeDocument' => $documents->firstWhere('id', $request->integer('document')) ?: $documents->first(),
         ]);
@@ -40,7 +35,7 @@ class WorkspaceController extends Controller
     public function store(Request $request)
     {
         $data = $request->validate(['title' => ['required', 'string', 'max:120']]);
-        $document = Document::create(['owner_id' => $this->currentUser($request)->id, 'title' => trim($data['title']), 'content' => '<p>Start writing here...</p>', 'paper_size' => 'a4']);
+        $document = Document::create(['owner_id' => $this->currentUser($request)->id, 'title' => trim($data['title']), 'content' => '<p><br></p>', 'paper_size' => 'a4']);
         return redirect()->route('workspace', ['document' => $document->id]);
     }
 
@@ -144,9 +139,4 @@ class WorkspaceController extends Controller
         return trim(html_entity_decode(strip_tags($xml), ENT_QUOTES | ENT_XML1, 'UTF-8'));
     }
 
-    public function switchUser(Request $request)
-    {
-        $request->session()->put('user_id', $request->validate(['user_id' => ['required', 'exists:users,id']])['user_id']);
-        return redirect()->route('workspace');
-    }
 }

@@ -18,14 +18,11 @@
         <div class="topbar-document">{{ $activeDocument?->title ?: 'Your workspace' }}</div>
         <div class="topbar-actions">
             <span class="workspace-mode">Saved locally</span>
-            <form method="POST" action="{{ route('users.switch') }}" class="user-switcher">
-                @csrf
+            <div class="user-switcher">
                 <span class="avatar avatar-small">{{ strtoupper(substr($user->name, 0, 1)) }}</span>
-                <select name="user_id" aria-label="Switch demo user">
-                    <option value="{{ $user->id }}">{{ $user->name }}</option>
-                    @foreach ($users as $switchUser)<option value="{{ $switchUser->id }}">{{ $switchUser->name }}</option>@endforeach
-                </select>
-            </form>
+                <span class="current-user-name">{{ $user->name }}</span>
+                <form method="POST" action="{{ route('logout') }}">@csrf<button type="submit" class="logout-button">Log out</button></form>
+            </div>
         </div>
     </header>
     <div class="workspace">

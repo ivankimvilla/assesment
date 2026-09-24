@@ -17,11 +17,17 @@ class DatabaseSeeder extends Seeder
     {
         // User::factory(10)->create();
 
-        User::firstOrCreate(['email' => 'alex@example.com'], [
-            'name' => 'Alex Morgan',
+        User::updateOrCreate(['email' => 'ivan@gmail.com'], [
+            'name' => 'Ivan',
+            'password' => 'password123',
         ]);
 
-        User::firstOrCreate(['email' => 'jamie@example.com'], ['name' => 'Jamie Chen']);
-        User::firstOrCreate(['email' => 'priya@example.com'], ['name' => 'Priya Shah']);
+        User::updateOrCreate(['email' => 'alex@example.com'], [
+            'name' => 'Alex Morgan',
+            'password' => 'password123',
+        ]);
+
+        User::updateOrCreate(['email' => 'jamie@example.com'], ['name' => 'Jamie Chen', 'password' => 'password123']);
+        User::updateOrCreate(['email' => 'priya@example.com'], ['name' => 'Priya Shah', 'password' => 'password123']);
     }
 }

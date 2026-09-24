@@ -16,7 +16,7 @@ npm run build
 php artisan serve
 ```
 
-Open `http://localhost:8000`. Use the user switcher to view the workspace as Alex Morgan, Jamie Chen, or Priya Shah and demonstrate shared access. The test suite runs with `php artisan test`.
+Open `http://localhost:8000`. Login is required before entering the workspace. The seeded Ivan account is `ivan@gmail.com` with password `password123`. New users can create an account from the registration page. The test suite runs with `php artisan test`.
 
 <p align="center">
 <a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
