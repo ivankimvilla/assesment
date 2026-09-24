@@ -54,6 +54,8 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    'share_url' => env('APP_SHARE_URL', 'https://assesment.laravel.cloud'),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

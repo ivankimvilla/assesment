@@ -2,7 +2,7 @@
 
 # Draftroom
 
-Draftroom is a lightweight collaborative document editor built on Laravel. It supports document creation, renaming, browser editing with rich-text formatting, autosaved persistence, uploads of any file type up to 2 MB, sharing with seeded demo users, and persistent paper sizes: A4, Short, and Long only. Text files are imported into the editor; binary files create a document record with a safe filename note.
+Draftroom is a lightweight collaborative document editor built on Laravel. It supports document creation, renaming, browser editing with rich-text formatting, autosaved persistence, restricted sharing by real `@gmail.com` address, and Anyone with the link sharing through a generated read-only URL at `https://assesment.laravel.cloud`. It also supports persistent paper sizes: A4, Short, and Long only. Uploads are limited to `.txt`, `.md`, or Word `.docx` files up to 2 MB; each file becomes a new editable document.
 
 ## Local setup
 

@@ -7,6 +7,7 @@ use App\Models\DocumentShare;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class WorkspaceController extends Controller
 {
@@ -78,22 +79,46 @@ class WorkspaceController extends Controller
     {
         $user = $this->currentUser($request);
         abort_unless($document->owner_id === $user->id, 403);
-        $data = $request->validate(['user_id' => ['required', 'exists:users,id']]);
-        if ((int) $data['user_id'] !== $document->owner_id) DocumentShare::firstOrCreate(['document_id' => $document->id, 'user_id' => $data['user_id']]);
-        return redirect()->route('workspace', ['document' => $document->id])->with('status', 'Access granted.');
+        $data = $request->validate([
+            'access_mode' => ['required', 'in:restricted,anyone'],
+            'user_email' => ['required_if:access_mode,restricted', 'nullable', 'email:rfc', 'regex:/@gmail\.com$/i'],
+        ]);
+
+        $document->access_mode = $data['access_mode'];
+        if ($data['access_mode'] === 'anyone') {
+            $document->share_token ??= Str::random(48);
+        } elseif (! empty($data['user_email'])) {
+            $email = strtolower(trim($data['user_email']));
+            $recipient = User::firstOrCreate(
+                ['email' => $email],
+                ['name' => Str::headline(str_replace(['.', '_', '-'], ' ', Str::before($email, '@'))), 'password' => Str::random(32)]
+            );
+            if ($recipient->id !== $document->owner_id) {
+                DocumentShare::firstOrCreate(['document_id' => $document->id, 'user_id' => $recipient->id]);
+            }
+        }
+        $document->save();
+
+        return redirect()->route('workspace', ['document' => $document->id])->with('status', $data['access_mode'] === 'anyone' ? 'Anyone with the link can view this document.' : 'Restricted access updated.');
+    }
+
+    public function publicDocument(string $token)
+    {
+        $document = Document::with('owner')->where('share_token', $token)->where('access_mode', 'anyone')->firstOrFail();
+        return view('shared-document', compact('document'));
     }
 
     public function import(Request $request)
     {
-        $request->validate(['file' => ['required', 'file', 'max:2048']]);
+        $request->validate(['file' => ['required', 'file', 'mimes:txt,md,docx', 'max:2048']]);
         $file = $request->file('file');
         $fileName = $file->getClientOriginalName();
         $filePath = $file->store('document-uploads');
-        $mimeType = (string) $file->getMimeType();
-        $isText = str_starts_with($mimeType, 'text/') || in_array(strtolower($file->getClientOriginalExtension()), ['txt', 'md', 'csv', 'json', 'xml', 'html', 'css', 'js'], true);
-        $content = $isText
-            ? '<p>'.nl2br(e(file_get_contents($file->getRealPath()))).'</p>'
-            : '<p>Uploaded file: <strong>'.e($fileName).'</strong></p><p>This file is available as a document record. Its binary contents are not rendered in the text editor.</p>';
+        $extension = strtolower($file->getClientOriginalExtension());
+        $rawContent = $extension === 'docx'
+            ? $this->extractDocxText($file->getRealPath())
+            : file_get_contents($file->getRealPath());
+        $content = '<p>'.nl2br(e($rawContent)).'</p>';
         $document = Document::create([
             'owner_id' => $this->currentUser($request)->id,
             'title' => pathinfo($fileName, PATHINFO_FILENAME),
@@ -102,6 +127,21 @@ class WorkspaceController extends Controller
             'source_file_name' => $fileName,
         ]);
         return redirect()->route('workspace', ['document' => $document->id])->with('status', 'File imported as a new document.');
+    }
+
+    private function extractDocxText(string $path): string
+    {
+        abort_unless(class_exists(\ZipArchive::class), 422, 'DOCX import requires the PHP ZIP extension.');
+        $archive = new \ZipArchive();
+        abort_unless($archive->open($path) === true, 422, 'The DOCX file could not be opened.');
+        $xml = $archive->getFromName('word/document.xml');
+        $archive->close();
+        abort_unless($xml !== false, 422, 'The DOCX document content could not be read.');
+
+        $xml = preg_replace('/<w:tab\s*\/>/i', "\t", $xml);
+        $xml = preg_replace('/<\/w:p>/i', "\n", $xml);
+
+        return trim(html_entity_decode(strip_tags($xml), ENT_QUOTES | ENT_XML1, 'UTF-8'));
     }
 
     public function switchUser(Request $request)
