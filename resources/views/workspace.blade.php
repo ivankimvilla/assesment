@@ -14,10 +14,28 @@
 <body data-update-url="{{ $activeDocument ? route('documents.update', $activeDocument) : '' }}">
 <div class="app-shell">
     <header class="topbar">
-        <a class="brand" href="{{ route('workspace') }}"><span class="brand-mark">d</span><span>draftroom</span></a>
-        <div class="topbar-document">{{ $activeDocument?->title ?: 'Your workspace' }}</div>
+        <a class="brand" href="{{ route('workspace') }}"><span>draftroom</span></a>
+        <div class="topbar-document">
+            @if ($activeDocument)
+                <input id="document-title" class="document-title" value="{{ $activeDocument->title }}" aria-label="Document title">
+                <div class="document-meta">{{ $activeDocument->owner_id === $user->id ? 'Owned by you' : 'Shared with you' }} · Last edited {{ $activeDocument->updated_at->diffForHumans() }}</div>
+            @else
+                <strong>Your workspace</strong>
+            @endif
+        </div>
         <div class="topbar-actions">
-            <span class="workspace-mode">Saved locally</span>
+            @if ($activeDocument)
+                <div class="download-menu">
+                    <button class="download-trigger" type="button" aria-expanded="false"><span class="download-icon" aria-hidden="true">⇩</span> Download</button>
+                    <div class="download-options" hidden>
+                        <a href="{{ route('documents.download.word', $activeDocument) }}">Microsoft Word (.docx)</a>
+                        <a href="{{ route('documents.download.pdf', $activeDocument) }}">PDF</a>
+                    </div>
+                </div>
+            @endif
+            @if ($activeDocument && $activeDocument->owner_id === $user->id)
+                <button class="outline-button" type="button" data-modal-open="share-modal"><span>↗</span> Share</button>
+            @endif
             <div class="user-switcher">
                 <span class="avatar avatar-small">{{ strtoupper(substr($user->name, 0, 1)) }}</span>
                 <span class="current-user-name">{{ $user->name }}</span>
@@ -80,18 +98,6 @@
             @if (session('status'))<div class="flash">{{ session('status') }}</div>@endif
             @if ($errors->any())<div class="flash error">{{ $errors->first() }}</div>@endif
             @if ($activeDocument)
-                <section class="editor-header">
-                    <div class="title-block">
-                        <input id="document-title" class="document-title" value="{{ $activeDocument->title }}" aria-label="Document title">
-                        <div class="document-meta">{{ $activeDocument->owner_id === $user->id ? 'Owned by you' : 'Shared with you' }} · Last edited {{ $activeDocument->updated_at->diffForHumans() }}</div>
-                    </div>
-                    <div class="header-actions">
-                        @if ($activeDocument->owner_id === $user->id)
-                            <button class="outline-button" type="button" data-modal-open="share-modal"><span>↗</span> Share</button>
-                        @endif
-                        <button class="icon-button" type="button" title="More options">•••</button>
-                    </div>
-                </section>
                 <div class="format-toolbar" role="toolbar" aria-label="Formatting toolbar">
                     <div class="toolbar-group"><button type="button" data-format="undo" title="Undo">↶</button><button type="button" data-format="redo" title="Redo">↷</button></div>
                     <span class="toolbar-divider"></span>
@@ -118,7 +124,23 @@
     </div>
 </div>
 @if ($activeDocument && $activeDocument->owner_id === $user->id)
-<div id="share-modal" class="modal-backdrop" hidden><div class="modal"><button class="close-button" type="button" data-modal-close="share-modal">×</button><div class="section-label">Share document</div><h2>Choose who can access</h2><p>Enter a real Gmail address for restricted access, or generate a link anyone can use to view this document.</p><form method="POST" action="{{ route('documents.share', $activeDocument) }}">@csrf<label class="share-option"><input type="radio" name="access_mode" value="restricted" {{ ($activeDocument->access_mode ?: 'restricted') === 'restricted' ? 'checked' : '' }}><span><strong>Restricted</strong><small>Only the Gmail address you add can access</small></span></label><div id="restricted-share-fields"><input type="email" name="user_email" class="full-select share-email" placeholder="name@gmail.com" pattern="[^@\s]+@gmail\.com" title="Enter a valid Gmail address" required></div><label class="share-option"><input type="radio" name="access_mode" value="anyone" {{ $activeDocument->access_mode === 'anyone' ? 'checked' : '' }}><span><strong>Anyone with the link</strong><small>Anyone with the generated link can view</small></span></label><button class="primary-button full-button" type="submit">Save sharing settings</button></form>@if ($activeDocument->access_mode === 'anyone' && $activeDocument->share_token)<div class="share-link-box"><input id="share-link" value="{{ rtrim(config('app.share_url'), '/') . '/shared/' . $activeDocument->share_token }}" readonly><button type="button" data-copy-share-link>Copy link</button></div>@endif</div></div>
+<div id="share-modal" class="modal-backdrop" hidden>
+    <div class="share-modal">
+        <div class="share-modal-heading"><h2>Share “{{ $activeDocument->title }}”</h2></div>
+        <form method="POST" action="{{ route('documents.share', $activeDocument) }}" class="share-form">
+            @csrf
+            <label class="share-search-label" for="share-email">Add people</label>
+            <input id="share-email" type="email" name="user_email" class="share-search" list="known-gmails" placeholder="name@gmail.com" pattern="[^@\s]+@gmail\.com" title="Enter a valid Gmail address">
+            <datalist id="known-gmails">
+                @foreach ($activeDocument->shares as $share)<option value="{{ $share->user->email }}">{{ $share->user->name }}</option>@endforeach
+            </datalist>
+            <section class="access-list"><h3>People with access</h3><div class="access-person"><span class="avatar">{{ strtoupper(substr($activeDocument->owner->name, 0, 1)) }}</span><span><strong>{{ $activeDocument->owner->name }} (you)</strong><small>{{ $activeDocument->owner->email }}</small></span><em>Owner</em></div>@foreach ($activeDocument->shares as $share)<div class="access-person"><span class="avatar alternate">{{ strtoupper(substr($share->user->name, 0, 1)) }}</span><span><strong>{{ $share->user->name }}</strong><small>{{ $share->user->email }}</small></span><em>Can edit</em></div>@endforeach</section>
+            <section class="general-access"><h3>General access</h3><div class="access-select-row"><label class="access-select-label"><span class="access-lock">⌑</span><span><select class="access-mode-select" name="access_mode" aria-label="General access"><option value="restricted" {{ ($activeDocument->access_mode ?: 'restricted') === 'restricted' ? 'selected' : '' }}>Restricted</option><option value="anyone" {{ $activeDocument->access_mode === 'anyone' ? 'selected' : '' }}>Anyone with the link</option></select><small data-access-description>{{ $activeDocument->access_mode === 'anyone' ? 'Anyone on the Internet with the link can view' : 'Only people with access can open with the link' }}</small></span></label><label class="link-role-select" {{ $activeDocument->access_mode === 'anyone' ? '' : 'hidden' }}><select name="link_role" aria-label="Link role"><optgroup label="ROLE"><option value="viewer" {{ ($activeDocument->link_role ?: 'viewer') === 'viewer' ? 'selected' : '' }}>Viewer</option><option value="commenter" {{ $activeDocument->link_role === 'commenter' ? 'selected' : '' }}>Commenter</option><option value="editor" {{ $activeDocument->link_role === 'editor' ? 'selected' : '' }}>Editor</option></optgroup></select></label></div></section>
+            <div class="share-link-box" {{ $activeDocument->access_mode === 'anyone' && $activeDocument->share_token ? '' : 'hidden' }}><input id="share-link" value="{{ $activeDocument->share_token ? rtrim(config('app.share_url'), '/') . '/shared/' . $activeDocument->share_token : '' }}" readonly><button type="button" data-copy-share-link>Copy link</button></div>
+            <div class="share-modal-actions"><button class="outline-button" type="button" data-modal-close="share-modal" data-share-done>Done</button></div>
+        </form>
+    </div>
+</div>
 @endif
 @if (! file_exists(public_path('build/manifest.json')) && ! file_exists(public_path('hot')))
     <script type="module">{!! file_get_contents(resource_path('js/workspace.js')) !!}</script>

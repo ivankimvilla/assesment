@@ -17,6 +17,8 @@ Route::middleware('auth')->group(function () {
 	Route::get('/', [WorkspaceController::class, 'index'])->name('workspace');
 	Route::post('/documents', [WorkspaceController::class, 'store'])->name('documents.store');
 	Route::patch('/documents/{document}', [WorkspaceController::class, 'update'])->name('documents.update');
+	Route::get('/documents/{document}/download/word', [WorkspaceController::class, 'downloadWord'])->name('documents.download.word');
+	Route::get('/documents/{document}/download/pdf', [WorkspaceController::class, 'downloadPdf'])->name('documents.download.pdf');
 	Route::patch('/documents/{document}/rename', [WorkspaceController::class, 'rename'])->name('documents.rename');
 	Route::delete('/documents/{document}', [WorkspaceController::class, 'destroy'])->name('documents.destroy');
 	Route::post('/documents/{document}/share', [WorkspaceController::class, 'share'])->name('documents.share');

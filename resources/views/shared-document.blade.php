@@ -12,7 +12,7 @@
 </head>
 <body>
 <main class="public-document-page">
-    <div class="public-document-meta"><span class="brand-mark">d</span><span>Shared document</span><span class="public-badge">Anyone with the link</span></div>
+    <div class="public-document-meta"><span class="brand-mark">d</span><span>Shared document</span><span class="public-badge">Anyone with the link · {{ ucfirst($document->link_role ?: 'viewer') }}</span></div>
     <article class="public-document paper-{{ $document->paper_size ?: 'a4' }}">
         <h1>{{ $document->title }}</h1>
         <p class="public-document-owner">Owned by {{ $document->owner->name }}</p>
